@@ -1,25 +1,29 @@
-// The  program  creates  a  child  using  fork().  Add  a  piece  of  shared  memory    for  both  the  parent  and  child
-// processes. The child process continuously generates a random number and puts it in the shared memory.
-// If  the  random  number  is  over  a  pre-configured  threshold,  the  child  process  sends  a  signal  to  the  parent
-// which  reads  the  current  value  from  the  shared  memory.  (You  will  find  examples  of  using  the  shared
-// memory functions in the example provided in the book.)
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <signal.h>
-#include <unistd.h>
-
-int THRESHOLD = 50;
+#include <sys/ipc.h>
+#include <sys/shm.h>
 
 int main()
 {
-    pid_t child_pid;
-    char *message;
+
+    void *shared_memory = (void *)0;
+    int shmid;
     int random_number;
+    int THRESHOLD = 50;
+    int running = 1;
+    pid_t child_pid;
 
-    // create child process using fork()
+    // create shared memory
+    shmid = shmget((key_t)1234, sizeof(int), IPC_CREAT | 0666);
+    if (shmid == -1)
+    {
+        perror(stderr, "shmget failed \n");
+        exit(EXIT_FAILURE);
+    }
 
+    // create fork and attach shared memory
     child_pid = fork();
     switch (child_pid)
     {
@@ -28,28 +32,40 @@ int main()
         exit(1);
     case 0:
         // child process
-        // allocate shared memory (malloc then returns a pointer)
-        message = (char *)malloc(sizeof(char) * 100);
+        // attach shared memory
+        shared_memory = shmat(shmid, (void *)0, 0);
+        if (shared_memory == (void *)-1)
+        {
+            perror("shmat failed \n");
+            exit(1);
+        }
         // generate random number
         random_number = rand() % 100;
         // write random number to shared memory
-        // sprintf sends the formatted string to the message buffer
-        sprintf(message, "%d", random_number);
+        *((int *)shared_memory) = random_number;
         // if random number is over threshold, send signal to parent
         if (random_number > THRESHOLD)
         {
             // send signal sigusr1 to parent
             kill(getppid(), SIGUSR1);
         }
-        // free memory
-        free(message);
+        // detach shared memory
+        if (shmdt(shared_memory) == -1)
+        {
+            perror("shmdt failed");
+            exit(1);
+        }
         break;
     default:
         // parent process
         // wait for signal from child
-        wait();
-        // read random number from shared memory
-        printf("%s\n", message);
-        break;
+        while (running)
+        {
+            // wait till signal recieved from child
+            pause();
+            // read random number from shared memory
+            printf("%d\n", *((int *)shared_memory));
+            running = 0;
+        }
     }
 }
