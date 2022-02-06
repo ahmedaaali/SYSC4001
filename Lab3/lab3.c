@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
+#include <signal.h>
+#include <unistd.h>
 
 int THRESHOLD = 50;
 
