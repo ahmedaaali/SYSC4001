@@ -68,7 +68,7 @@ int main()
         }
 
         // send signal to parent to read current value from shared memory
-        kill(getppid(), SIGUSR1);
+        kill(getppid(), SIGALRM);
         signal_received = true;
 
         exit_code = 50;
@@ -78,7 +78,7 @@ int main()
         while (true)
         {
             pause();
-            if (signal_received == SIGUSR1)
+            if (signal_received == SIGALRM)
             {
                 // read random number from shared memory
                 random_number = *shared_memory;
