@@ -8,8 +8,6 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-pid = fork();
-
 int main()
 {
     int shmid;
@@ -25,14 +23,14 @@ int main()
     shmid = shmget((key_t)1234, sizeof(random_number), IPC_CREAT | 0666);
     if (shmid == -1)
     {
-        perror(stderr, "shmget failed \n");
+        perror("shmget failed \n");
         exit(EXIT_FAILURE);
     }
     // make memory accessible to child
     shared_memory = (int *)shmat(shmid, (void *)0, 0);
     if (shared_memory == (void *)-1)
     {
-        perror(stderr, "shmat failed \n");
+        perror("shmat failed \n");
         exit(EXIT_FAILURE);
     }
     printf("shared memory attached at %X\n", shared_memory);
