@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <wait.h>
+#include <stdbool.h>
 
 pid = fork();
 
