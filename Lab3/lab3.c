@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <wait.h>
 #include <stdbool.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 
 pid = fork();
 
