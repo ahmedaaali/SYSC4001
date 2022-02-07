@@ -18,6 +18,7 @@ int main()
     int THRESHOLD = 50;
     bool generated = false;
     int exit_code;
+    bool signal_received = false;
 
     // create shared memory
     shmid = shmget((key_t)1234, sizeof(random_number), IPC_CREAT | 0666);
@@ -68,6 +69,7 @@ int main()
 
         // send signal to parent to read current value from shared memory
         kill(getppid(), SIGUSR1);
+        signal_received = true;
 
         exit_code = 50;
     // Parent
@@ -112,5 +114,5 @@ int main()
             printf("Child terminated abnormally \n");
         }
     }
-    exit(exit_code)
+    exit(exit_code);
 }
