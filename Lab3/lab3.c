@@ -1,71 +1,115 @@
-#include <stdlib.h>
-#include <stdio.h>
 #include <sys/types.h>
 #include <signal.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <wait.h>
+
+pid = fork();
 
 int main()
 {
-
-    void *shared_memory = (void *)0;
     int shmid;
+    int *shared_memory;
+    pid_t pid;
+    pid_t child_pid;
     int random_number;
     int THRESHOLD = 50;
-    int running = 1;
-    pid_t child_pid;
+    bool generated = false;
+    int exit_code;
 
     // create shared memory
-    shmid = shmget((key_t)1234, sizeof(int), IPC_CREAT | 0666);
+    shmid = shmget((key_t)1234, sizeof(random_number), IPC_CREAT | 0666);
     if (shmid == -1)
     {
         perror(stderr, "shmget failed \n");
         exit(EXIT_FAILURE);
     }
+    // make memory accessible to child
+    shared_memory = (int *)shmat(shmid, (void *)0, 0);
+    if (shared_memory == (void *)-1)
+    {
+        perror(stderr, "shmat failed \n");
+        exit(EXIT_FAILURE);
+    }
+    printf("shared memory attached at %X\n", shared_memory);
 
     // create fork and attach shared memory
     child_pid = fork();
+
     switch (child_pid)
     {
+    // Error
     case -1:
         perror("fork failed");
         exit(1);
+    // Child
     case 0:
-        // child process
-        // attach shared memory
-        shared_memory = shmat(shmid, (void *)0, 0);
-        if (shared_memory == (void *)-1)
-        {
-            perror("shmat failed \n");
-            exit(1);
-        }
         // generate random number
-        random_number = rand() % 100;
-        // write random number to shared memory
-        *((int *)shared_memory) = random_number;
-        // if random number is over threshold, send signal to parent
-        if (random_number > THRESHOLD)
+        while (!generated)
         {
-            // send signal sigusr1 to parent
-            kill(getppid(), SIGUSR1);
+            random_number = rand() % 100;
+            printf("random number: %d\n", random_number);
+            if (random_number > THRESHOLD)
+            {
+                generated = true;
+            }
         }
+        // at this point we have a random number > threshold
+        // store this number in shared memory
+        *shared_memory = random_number;
         // detach shared memory
         if (shmdt(shared_memory) == -1)
         {
             perror("shmdt failed");
             exit(1);
         }
-        break;
+
+        // send signal to parent to read current value from shared memory
+        kill(getppid(), SIGUSR1);
+
+        exit_code = 50;
+    // Parent
     default:
-        // parent process
         // wait for signal from child
-        while (running)
+        while (true)
         {
-            // wait till signal recieved from child
             pause();
-            // read random number from shared memory
-            printf("%d\n", *((int *)shared_memory));
-            running = 0;
+            if (signal_received == SIGUSR1)
+            {
+                // read random number from shared memory
+                random_number = *shared_memory;
+                printf("random number: %d\n", random_number);
+                if (random_number > THRESHOLD)
+                {
+                    // this is what we expect
+                    printf("random number is over threshold\n");
+                }
+                else
+                {
+                    printf("random number is under threshold\n");
+                }
+                exit_code = 0;
+                break;
+            }
         }
     }
+
+    // wait for child process to finish selecting a number
+    if (child_pid != 0)
+    {
+        int stat_val;
+        child_pid = wait(&stat_val);
+
+        printf("child has finished: PID = %d \n", child_pid);
+        if (WIFEXITED(stat_val))
+        {
+            printf("Child exited with code %d \n", WEXITSTATUS(stat_val));
+        }
+        else
+        {
+            printf("Child terminated abnormally \n");
+        }
+    }
+    exit(exit_code)
 }
