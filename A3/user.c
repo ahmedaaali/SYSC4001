@@ -83,43 +83,52 @@ int main(int argc, char const *argv[])
         }
     }
 
-    // if command is Append, get user input for sentence
-    if (!strcmp(msg_pass.command, "Append"))
+    while (is_running)
     {
-        printf("Append Op - Enter a sentence: \n");
-        scanf("%s", msg_pass.arguement);
-    }
-    // if command is Delete, get user input for word
-    else if (!strcmp(msg_pass.command, "Delete"))
-    {
-        printf("Delete Op - Enter a word: \n");
-        scanf("%s", msg_pass.arguement);
-    }
-    // if command is Remove, get user input for sentence
-    else if (!strcmp(msg_pass.command, "Remove"))
-    {
-        printf("Remove Op - Enter a sentence: \n");
-        scanf("%s", msg_pass.arguement);
-    }
-    // if command is Search, get user input for string
-    else if (!strcmp(msg_pass.command, "Search"))
-    {
-        printf("Search Op - Enter a string: \n");
-        scanf("%s", msg_pass.arguement);
-    }
 
-    // send message to text-manager
-    if (msgsnd(serv_qid, &msg_pass, sizeof(msg_pass), 0) < 0)
-    {
-        perror("msgsnd");
-        exit(1);
-    }
+        // if command is Append, get user input for sentence
+        if (!strcmp(msg_pass.command, "Append"))
+        {
+            printf("Append Op - Enter a sentence: \n");
+            scanf("%s", msg_pass.arguement);
+        }
+        // if command is Delete, get user input for word
+        else if (!strcmp(msg_pass.command, "Delete"))
+        {
+            printf("Delete Op - Enter a word: \n");
+            scanf("%s", msg_pass.arguement);
+        }
+        // if command is Remove, get user input for sentence
+        else if (!strcmp(msg_pass.command, "Remove"))
+        {
+            printf("Remove Op - Enter a sentence: \n");
+            scanf("%s", msg_pass.arguement);
+        }
+        // if command is Search, get user input for string
+        else if (!strcmp(msg_pass.command, "Search"))
+        {
+            printf("Search Op - Enter a string: \n");
+            scanf("%s", msg_pass.arguement);
+        }
+        //add exit command
+        else if (!strcmp(msg_pass.command, "exit"))
+        {
+            is_running = false;
+        }
 
-    // receive message from text-manager
-    if (msgrcv(cli_qid, &msg_rcv, sizeof(msg_rcv), 0, 0) < 0)
-    {
-        perror("msgrcv");
-        exit(1);
+        // send message to text-manager
+        if (msgsnd(serv_qid, &msg_pass, sizeof(msg_pass), 0) < 0)
+        {
+            perror("msgsnd");
+            exit(1);
+        }
+
+        // receive message from text-manager
+        if (msgrcv(cli_qid, &msg_rcv, sizeof(msg_rcv), 0, 0) < 0)
+        {
+            perror("msgrcv");
+            exit(1);
+        }
     }
 
     // print the average time required to perform the operations corresponding to the command that was sent

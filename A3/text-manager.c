@@ -33,7 +33,8 @@ struct msg_rcv
 struct msg_pass
 {
     long int msg_type;
-    char time_used[MAX_TEXT];
+    //time in seconds
+    long int time;
 };
 
 // operation functions
@@ -57,6 +58,15 @@ int main(int argc, char const *argv[])
     struct msg_pass msg_pass;
     struct msg_rcv msg_rcv;
     bool is_running = true;
+
+    // init time using gettimeofday
+    struct timeval start, end;
+
+    // times vars
+    long time_used;
+
+    // init base text
+    char text[] = "The quick brown fox jumps over the lazy dog.\n";
 
     // open message queues
     if ((serv_qid = msgget(SERVER_MQUEUE, 0666)) < 0)
@@ -93,22 +103,55 @@ int main(int argc, char const *argv[])
         if (!strcmp(msg_rcv.command, "Append"))
         {
             printf("Append sentance received in text-manager: %s\n", msg_rcv.argument);
+            // measure time taken to perform operation and store in msg_pass
+            gettimeofday(&start, NULL);
             appendSentance(msg_rcv.argument);
+            gettimeofday(&end, NULL);
+            // calculate time taken to perform operation in seconds
+            time_used = (end.tv_sec - start.tv_sec);
+
+            // send time taken to user.c
+            msg_pass.msg_type = 1;
+            msg_pass.time = time_used;
         }
         else if (!strcmp(msg_rcv.command, "Delete"))
         {
             printf("Delete word received in text-manager: %s\n", msg_rcv.argument);
+
+            gettimeofday(&start, NULL);
             deleteWord(msg_rcv.argument);
+            gettimeofday(&end, NULL);
+            time_used = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
+
+            // send time taken to user.c
+            msg_pass.msg_type = 1;
+            msg_pass.time = time_used;
         }
         else if (!strcmp(msg_rcv.command, "Remove"))
         {
             printf("Remove sentance received in text-manager: %s\n", msg_rcv.argument);
+
+            gettimeofday(&start, NULL);
             removeSentance(msg_rcv.argument);
+            gettimeofday(&end, NULL);
+            time_used = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
+
+            // send time taken to user.c
+            msg_pass.msg_type = 1;
+            msg_pass.time = time_used;
         }
         else if (!strcmp(msg_rcv.command, "Search"))
         {
             printf("Search string received in text-manager: %s\n", msg_rcv.argument);
+
+            gettimeofday(&start, NULL);
             searchWord(msg_rcv.argument);
+            gettimeofday(&end, NULL);
+            time_used = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
+
+            // send time taken to user.c
+            msg_pass.msg_type = 1;
+            msg_pass.time = time_used;
         }
         else
         {
@@ -117,6 +160,17 @@ int main(int argc, char const *argv[])
         }
 
         // send message back to user.c
+        if (msgsnd(cli_qid, &msg_pass, sizeof(msg_pass), 0) < 0)
+        {
+            perror("msgsnd");
+            exit(1);
+        }
+
+        // check if user.c has sent exit command
+        if (!strcmp(msg_rcv.command, "Exit"))
+        {
+            is_running = false;
+        }
     }
 
     return 0;
